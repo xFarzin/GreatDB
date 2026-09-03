@@ -5,6 +5,17 @@ echo "========================================="
 echo "   Scalable Search Platform Installer"
 echo "========================================="
 
+# Disk space check
+FREE_SPACE=$(df -m . | awk 'NR==2 {print $4}')
+if [ "$FREE_SPACE" -lt 2000 ]; then
+    echo "WARNING: You have less than 2000MB of free disk space in the current directory."
+    echo "Docker build might fail with 'no space left on device'."
+    read -p "Do you want to continue anyway? (y/N): " CONTINUE
+    if [[ ! "$CONTINUE" =~ ^[Yy]$ ]]; then
+        kill -INT $$
+    fi
+fi
+
 echo "This script will help you deploy the platform."
 echo "Select Deployment Topology:"
 echo "1) All-in-One (1 Server)"
@@ -56,17 +67,16 @@ $DOCKER_COMPOSE_CMD up -d db redis opensearch minio
 echo "Waiting for DB to initialize..."
 sleep 15
 
+echo "Building containers (this might take a few minutes)..."
+$DOCKER_COMPOSE_CMD --profile app build
+
 echo "Running migrations..."
-if command -v alembic &> /dev/null; then
-    alembic upgrade head
-else
-    echo "Running migrations via docker..."
-    $DOCKER_COMPOSE_CMD run --rm api alembic upgrade head || true
-fi
+echo "Running migrations via docker..."
+$DOCKER_COMPOSE_CMD run --rm api alembic upgrade head || echo "WARNING: Migrations failed. You may need to investigate via logs."
 
 if [ "$TOPOLOGY" == "1" ]; then
     echo "Starting App (Bot, API) and Worker services..."
-    $DOCKER_COMPOSE_CMD --profile app up -d --build
+    $DOCKER_COMPOSE_CMD --profile app up -d
     echo "Done! The platform is now running in All-in-One mode."
     echo "Use '$DOCKER_COMPOSE_CMD logs -f' to view logs."
 else
