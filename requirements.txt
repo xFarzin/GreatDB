@@ -1,0 +1,12 @@
+fastapi
+uvicorn[standard]
+aiogram>=3.3.0
+SQLAlchemy>=2.0.0
+alembic
+asyncpg
+celery
+redis
+opensearch-py
+minio
+pydantic-settings
+babel
