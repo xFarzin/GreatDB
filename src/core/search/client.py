@@ -1,11 +1,12 @@
-from opensearchpy import OpenSearch, AsyncOpenSearch
+from opensearchpy import AsyncOpenSearch
 from src.core.config import settings
 
 def get_opensearch_client() -> AsyncOpenSearch:
+    # OpenSearch security plugin is disabled internally to save memory and CPU
+    # We only use HTTP and don't supply credentials.
     return AsyncOpenSearch(
         hosts=[settings.opensearch_url],
-        http_auth=(settings.opensearch_user, settings.opensearch_password),
-        use_ssl=settings.opensearch_url.startswith("https"),
+        use_ssl=False,
         verify_certs=False,
         ssl_show_warn=False
     )

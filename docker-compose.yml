@@ -6,32 +6,37 @@ services:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-secretpassword}
       POSTGRES_DB: ${POSTGRES_DB:-search_platform}
     volumes:
-      - pgdata:/var/lib/postgresql/data
+    - pgdata:/var/lib/postgresql/data
     restart: unless-stopped
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-app_user} -d ${POSTGRES_DB:-search_platform}"]
+      test:
+      - CMD-SHELL
+      - pg_isready -U ${POSTGRES_USER:-app_user} -d ${POSTGRES_DB:-search_platform}
       interval: 10s
       timeout: 5s
       retries: 5
-
   redis:
     image: redis:7-alpine
     volumes:
-      - redisdata:/data
+    - redisdata:/data
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
+      test:
+      - CMD
+      - redis-cli
+      - ping
       interval: 10s
       timeout: 5s
       retries: 5
-
   opensearch:
     image: opensearchproject/opensearch:2.11.0
     environment:
-      - discovery.type=single-node
-      - bootstrap.memory_lock=true
-      - "OPENSEARCH_JAVA_OPTS=-Xms512m -Xmx512m"
-      - OPENSEARCH_INITIAL_ADMIN_PASSWORD=${OPENSEARCH_PASSWORD:-StrongPassword123!}
+    - discovery.type=single-node
+    - bootstrap.memory_lock=true
+    - OPENSEARCH_JAVA_OPTS=-Xms512m -Xmx512m
+    - OPENSEARCH_INITIAL_ADMIN_PASSWORD=${OPENSEARCH_PASSWORD:-StrongPassword123!}
+    - DISABLE_SECURITY_PLUGIN=true
+    - DISABLE_INSTALL_DEMO_CONFIG=true
     ulimits:
       memlock:
         soft: -1
@@ -40,9 +45,8 @@ services:
         soft: 65536
         hard: 65536
     volumes:
-      - osdata:/usr/share/opensearch/data
+    - osdata:/usr/share/opensearch/data
     restart: unless-stopped
-
   minio:
     image: minio/minio
     command: server /data --console-address ":9001"
@@ -50,21 +54,19 @@ services:
       MINIO_ROOT_USER: ${MINIO_USER:-admin}
       MINIO_ROOT_PASSWORD: ${MINIO_PASSWORD:-adminpassword}
     volumes:
-      - miniodata:/data
+    - miniodata:/data
     restart: unless-stopped
-
   api:
     build: .
     command: uvicorn src.api.main:app --host 0.0.0.0 --port 8000
     env_file: .env
     environment:
-      # Override host configs for internal network
-      - POSTGRES_HOST=db
-      - DATABASE_URL=postgresql+asyncpg://${POSTGRES_USER:-app_user}:${POSTGRES_PASSWORD:-secretpassword}@db:5432/${POSTGRES_DB:-search_platform}
-      - OPENSEARCH_URL=http://opensearch:9200
-      - REDIS_URL=redis://redis:6379/0
-      - CELERY_BROKER_URL=redis://redis:6379/1
-      - MINIO_ENDPOINT=minio:9000
+    - POSTGRES_HOST=db
+    - DATABASE_URL=postgresql+asyncpg://${POSTGRES_USER:-app_user}:${POSTGRES_PASSWORD:-secretpassword}@db:5432/${POSTGRES_DB:-search_platform}
+    - OPENSEARCH_URL=http://opensearch:9200
+    - REDIS_URL=redis://redis:6379/0
+    - CELERY_BROKER_URL=redis://redis:6379/1
+    - MINIO_ENDPOINT=minio:9000
     depends_on:
       db:
         condition: service_healthy
@@ -72,19 +74,18 @@ services:
         condition: service_healthy
     restart: unless-stopped
     profiles:
-      - app
-
+    - app
   bot:
     build: .
     command: python -m src.bot.main
     env_file: .env
     environment:
-      - POSTGRES_HOST=db
-      - DATABASE_URL=postgresql+asyncpg://${POSTGRES_USER:-app_user}:${POSTGRES_PASSWORD:-secretpassword}@db:5432/${POSTGRES_DB:-search_platform}
-      - OPENSEARCH_URL=http://opensearch:9200
-      - REDIS_URL=redis://redis:6379/0
-      - CELERY_BROKER_URL=redis://redis:6379/1
-      - MINIO_ENDPOINT=minio:9000
+    - POSTGRES_HOST=db
+    - DATABASE_URL=postgresql+asyncpg://${POSTGRES_USER:-app_user}:${POSTGRES_PASSWORD:-secretpassword}@db:5432/${POSTGRES_DB:-search_platform}
+    - OPENSEARCH_URL=http://opensearch:9200
+    - REDIS_URL=redis://redis:6379/0
+    - CELERY_BROKER_URL=redis://redis:6379/1
+    - MINIO_ENDPOINT=minio:9000
     depends_on:
       db:
         condition: service_healthy
@@ -92,19 +93,18 @@ services:
         condition: service_healthy
     restart: unless-stopped
     profiles:
-      - app
-
+    - app
   worker:
     build: .
     command: celery -A src.worker.celery_app worker --loglevel=info
     env_file: .env
     environment:
-      - POSTGRES_HOST=db
-      - DATABASE_URL=postgresql+asyncpg://${POSTGRES_USER:-app_user}:${POSTGRES_PASSWORD:-secretpassword}@db:5432/${POSTGRES_DB:-search_platform}
-      - OPENSEARCH_URL=http://opensearch:9200
-      - REDIS_URL=redis://redis:6379/0
-      - CELERY_BROKER_URL=redis://redis:6379/1
-      - MINIO_ENDPOINT=minio:9000
+    - POSTGRES_HOST=db
+    - DATABASE_URL=postgresql+asyncpg://${POSTGRES_USER:-app_user}:${POSTGRES_PASSWORD:-secretpassword}@db:5432/${POSTGRES_DB:-search_platform}
+    - OPENSEARCH_URL=http://opensearch:9200
+    - REDIS_URL=redis://redis:6379/0
+    - CELERY_BROKER_URL=redis://redis:6379/1
+    - MINIO_ENDPOINT=minio:9000
     depends_on:
       db:
         condition: service_healthy
@@ -112,11 +112,10 @@ services:
         condition: service_healthy
     restart: unless-stopped
     profiles:
-      - app
-      - worker
-
+    - app
+    - worker
 volumes:
-  pgdata:
-  redisdata:
-  osdata:
-  miniodata:
+  pgdata: null
+  redisdata: null
+  osdata: null
+  miniodata: null
