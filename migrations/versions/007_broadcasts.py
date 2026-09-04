@@ -20,8 +20,15 @@ depends_on: Union[str, Sequence[str], None] = None
 
 
 def upgrade() -> None:
-    broadcast_status_enum = postgresql.ENUM('PENDING', 'RUNNING', 'COMPLETED', 'FAILED', name='broadcaststatus')
-    broadcast_status_enum.create(op.get_bind(), checkfirst=True)
+
+    op.execute("""
+    DO $$ BEGIN
+        IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'broadcaststatus') THEN
+            CREATE TYPE broadcaststatus AS ENUM ('PENDING', 'RUNNING', 'COMPLETED', 'FAILED');
+        END IF;
+    END $$;
+    """)
+    broadcast_status_enum = postgresql.ENUM('PENDING', 'RUNNING', 'COMPLETED', 'FAILED', name='broadcaststatus', create_type=False)
 
     op.create_table('broadcasts',
     sa.Column('id', sa.Integer(), nullable=False),
@@ -41,6 +48,5 @@ def upgrade() -> None:
 
 
 def downgrade() -> None:
-    op.drop_index(op.f('ix_broadcasts_id'), table_name='broadcasts')
+    op.drop_index(op.f('ix_broadcasts_id'), table_name='broadcasts', create_type=False)
     op.drop_table('broadcasts')
-    postgresql.ENUM('PENDING', 'RUNNING', 'COMPLETED', 'FAILED', name='broadcaststatus').drop(op.get_bind())
