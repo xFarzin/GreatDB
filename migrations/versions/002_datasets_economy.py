@@ -20,9 +20,16 @@ depends_on: Union[str, Sequence[str], None] = None
 
 
 def upgrade() -> None:
+
+    op.execute("""
+    DO $$ BEGIN
+        IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'datasetstatus') THEN
+            CREATE TYPE datasetstatus AS ENUM ('DRAFT', 'QUEUED', 'IMPORTING', 'INDEXING', 'READY', 'DISABLED', 'FAILED', 'ARCHIVED');
+        END IF;
+    END $$;
+    """)
     # datasets
-    dataset_status_enum = postgresql.ENUM('DRAFT', 'QUEUED', 'IMPORTING', 'INDEXING', 'READY', 'DISABLED', 'FAILED', 'ARCHIVED', name='datasetstatus')
-    dataset_status_enum.create(op.get_bind(), checkfirst=True)
+    dataset_status_enum = postgresql.ENUM('DRAFT', 'QUEUED', 'IMPORTING', 'INDEXING', 'READY', 'DISABLED', 'FAILED', 'ARCHIVED', name='datasetstatus', create_type=False)
 
     op.create_table('datasets',
     sa.Column('id', sa.Integer(), nullable=False),
@@ -41,8 +48,15 @@ def upgrade() -> None:
     op.create_index(op.f('ix_datasets_id'), 'datasets', ['id'], unique=False)
 
     # economy
-    transaction_type_enum = postgresql.ENUM('PURCHASE', 'SEARCH', 'REFERRAL', 'REFERRAL_PURCHASE_BONUS', 'CONTRIBUTION_REWARD', 'MANUAL_ADJUSTMENT', name='transactiontype')
-    transaction_type_enum.create(op.get_bind(), checkfirst=True)
+
+    op.execute("""
+    DO $$ BEGIN
+        IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'transactiontype') THEN
+            CREATE TYPE transactiontype AS ENUM ('PURCHASE', 'SEARCH', 'REFERRAL', 'REFERRAL_PURCHASE_BONUS', 'CONTRIBUTION_REWARD', 'MANUAL_ADJUSTMENT');
+        END IF;
+    END $$;
+    """)
+    transaction_type_enum = postgresql.ENUM('PURCHASE', 'SEARCH', 'REFERRAL', 'REFERRAL_PURCHASE_BONUS', 'CONTRIBUTION_REWARD', 'MANUAL_ADJUSTMENT', name='transactiontype', create_type=False)
 
     op.create_table('credit_transactions',
     sa.Column('id', sa.Integer(), nullable=False),
@@ -61,12 +75,10 @@ def upgrade() -> None:
 
 
 def downgrade() -> None:
-    op.drop_index(op.f('ix_credit_transactions_user_id'), table_name='credit_transactions')
-    op.drop_index(op.f('ix_credit_transactions_reference_id'), table_name='credit_transactions')
-    op.drop_index(op.f('ix_credit_transactions_id'), table_name='credit_transactions')
+    op.drop_index(op.f('ix_credit_transactions_user_id'), table_name='credit_transactions', create_type=False)
+    op.drop_index(op.f('ix_credit_transactions_reference_id'), table_name='credit_transactions', create_type=False)
+    op.drop_index(op.f('ix_credit_transactions_id'), table_name='credit_transactions', create_type=False)
     op.drop_table('credit_transactions')
-    postgresql.ENUM('PURCHASE', 'SEARCH', 'REFERRAL', 'REFERRAL_PURCHASE_BONUS', 'CONTRIBUTION_REWARD', 'MANUAL_ADJUSTMENT', name='transactiontype').drop(op.get_bind())
 
-    op.drop_index(op.f('ix_datasets_id'), table_name='datasets')
+    op.drop_index(op.f('ix_datasets_id'), table_name='datasets', create_type=False)
     op.drop_table('datasets')
-    postgresql.ENUM('DRAFT', 'QUEUED', 'IMPORTING', 'INDEXING', 'READY', 'DISABLED', 'FAILED', 'ARCHIVED', name='datasetstatus').drop(op.get_bind())

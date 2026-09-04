@@ -20,8 +20,15 @@ depends_on: Union[str, Sequence[str], None] = None
 
 
 def upgrade() -> None:
-    submission_status_enum = postgresql.ENUM('QUARANTINED', 'REVIEWING', 'APPROVED', 'REJECTED', name='submissionstatus')
-    submission_status_enum.create(op.get_bind(), checkfirst=True)
+
+    op.execute("""
+    DO $$ BEGIN
+        IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'submissionstatus') THEN
+            CREATE TYPE submissionstatus AS ENUM ('QUARANTINED', 'REVIEWING', 'APPROVED', 'REJECTED');
+        END IF;
+    END $$;
+    """)
+    submission_status_enum = postgresql.ENUM('QUARANTINED', 'REVIEWING', 'APPROVED', 'REJECTED', name='submissionstatus', create_type=False)
 
     op.create_table('dataset_submissions',
     sa.Column('id', sa.Integer(), nullable=False),
@@ -43,6 +50,5 @@ def upgrade() -> None:
 
 
 def downgrade() -> None:
-    op.drop_index(op.f('ix_dataset_submissions_id'), table_name='dataset_submissions')
+    op.drop_index(op.f('ix_dataset_submissions_id'), table_name='dataset_submissions', create_type=False)
     op.drop_table('dataset_submissions')
-    postgresql.ENUM('QUARANTINED', 'REVIEWING', 'APPROVED', 'REJECTED', name='submissionstatus').drop(op.get_bind())

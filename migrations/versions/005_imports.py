@@ -20,8 +20,15 @@ depends_on: Union[str, Sequence[str], None] = None
 
 
 def upgrade() -> None:
-    import_status_enum = postgresql.ENUM('QUEUED', 'RUNNING', 'PAUSED', 'COMPLETED', 'FAILED', name='importstatus')
-    import_status_enum.create(op.get_bind(), checkfirst=True)
+
+    op.execute("""
+    DO $$ BEGIN
+        IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'importstatus') THEN
+            CREATE TYPE importstatus AS ENUM ('QUEUED', 'RUNNING', 'PAUSED', 'COMPLETED', 'FAILED');
+        END IF;
+    END $$;
+    """)
+    import_status_enum = postgresql.ENUM('QUEUED', 'RUNNING', 'PAUSED', 'COMPLETED', 'FAILED', name='importstatus', create_type=False)
 
     op.create_table('import_jobs',
     sa.Column('id', sa.Integer(), nullable=False),
@@ -56,10 +63,9 @@ def upgrade() -> None:
 
 
 def downgrade() -> None:
-    op.drop_index(op.f('ix_import_checkpoints_job_id'), table_name='import_checkpoints')
-    op.drop_index(op.f('ix_import_checkpoints_id'), table_name='import_checkpoints')
+    op.drop_index(op.f('ix_import_checkpoints_job_id'), table_name='import_checkpoints', create_type=False)
+    op.drop_index(op.f('ix_import_checkpoints_id'), table_name='import_checkpoints', create_type=False)
     op.drop_table('import_checkpoints')
 
-    op.drop_index(op.f('ix_import_jobs_id'), table_name='import_jobs')
+    op.drop_index(op.f('ix_import_jobs_id'), table_name='import_jobs', create_type=False)
     op.drop_table('import_jobs')
-    postgresql.ENUM('QUEUED', 'RUNNING', 'PAUSED', 'COMPLETED', 'FAILED', name='importstatus').drop(op.get_bind())
