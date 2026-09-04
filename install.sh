@@ -7,8 +7,8 @@ echo "========================================="
 
 # Disk space check
 FREE_SPACE=$(df -m . | awk 'NR==2 {print $4}')
-if [ "$FREE_SPACE" -lt 2000 ]; then
-    echo "WARNING: You have less than 2000MB of free disk space in the current directory."
+if [ "$FREE_SPACE" -lt 3500 ]; then
+    echo "WARNING: You have less than 3500MB of free disk space in the current directory."
     echo "Docker build might fail with 'no space left on device'."
     read -p "Do you want to continue anyway? (y/N): " CONTINUE
     if [[ ! "$CONTINUE" =~ ^[Yy]$ ]]; then
@@ -61,8 +61,11 @@ else
     kill -INT $$
 fi
 
+echo "Cleaning up old containers..."
+$DOCKER_COMPOSE_CMD --profile app down || true
+
 echo "Starting infrastructure services using Docker Compose..."
-$DOCKER_COMPOSE_CMD up -d db redis opensearch minio
+$DOCKER_COMPOSE_CMD up -d --force-recreate db redis opensearch minio
 
 echo "Waiting for DB to initialize..."
 sleep 15
@@ -76,7 +79,7 @@ $DOCKER_COMPOSE_CMD run --rm api alembic upgrade head || echo "WARNING: Migratio
 
 if [ "$TOPOLOGY" == "1" ]; then
     echo "Starting App (Bot, API) and Worker services..."
-    $DOCKER_COMPOSE_CMD --profile app up -d
+    $DOCKER_COMPOSE_CMD --profile app up -d --force-recreate
     echo "Done! The platform is now running in All-in-One mode."
     echo "Use '$DOCKER_COMPOSE_CMD logs -f' to view logs."
 else
