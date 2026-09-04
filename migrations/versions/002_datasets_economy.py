@@ -22,7 +22,7 @@ depends_on: Union[str, Sequence[str], None] = None
 def upgrade() -> None:
     # datasets
     dataset_status_enum = postgresql.ENUM('DRAFT', 'QUEUED', 'IMPORTING', 'INDEXING', 'READY', 'DISABLED', 'FAILED', 'ARCHIVED', name='datasetstatus')
-    dataset_status_enum.create(op.get_bind())
+    dataset_status_enum.create(op.get_bind(), checkfirst=True)
 
     op.create_table('datasets',
     sa.Column('id', sa.Integer(), nullable=False),
@@ -42,7 +42,7 @@ def upgrade() -> None:
 
     # economy
     transaction_type_enum = postgresql.ENUM('PURCHASE', 'SEARCH', 'REFERRAL', 'REFERRAL_PURCHASE_BONUS', 'CONTRIBUTION_REWARD', 'MANUAL_ADJUSTMENT', name='transactiontype')
-    transaction_type_enum.create(op.get_bind())
+    transaction_type_enum.create(op.get_bind(), checkfirst=True)
 
     op.create_table('credit_transactions',
     sa.Column('id', sa.Integer(), nullable=False),

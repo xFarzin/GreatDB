@@ -21,7 +21,7 @@ depends_on: Union[str, Sequence[str], None] = None
 
 def upgrade() -> None:
     broadcast_status_enum = postgresql.ENUM('PENDING', 'RUNNING', 'COMPLETED', 'FAILED', name='broadcaststatus')
-    broadcast_status_enum.create(op.get_bind())
+    broadcast_status_enum.create(op.get_bind(), checkfirst=True)
 
     op.create_table('broadcasts',
     sa.Column('id', sa.Integer(), nullable=False),
