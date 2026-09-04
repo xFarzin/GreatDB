@@ -21,7 +21,7 @@ depends_on: Union[str, Sequence[str], None] = None
 
 def upgrade() -> None:
     submission_status_enum = postgresql.ENUM('QUARANTINED', 'REVIEWING', 'APPROVED', 'REJECTED', name='submissionstatus')
-    submission_status_enum.create(op.get_bind())
+    submission_status_enum.create(op.get_bind(), checkfirst=True)
 
     op.create_table('dataset_submissions',
     sa.Column('id', sa.Integer(), nullable=False),
